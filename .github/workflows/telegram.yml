@@ -1,0 +1,36 @@
+name: Telegram Notify
+
+on: pull_request
+
+jobs:
+  Telegram_Notify:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+    - name: Get Telegram usernames from Secrets
+      uses: jsdaniell/create-json@v1.2.2
+      with:
+        name: "usernames.json"
+        json: ${{ secrets.USERNAMES }}
+    - name: Set commit message and reviewers
+      run: |
+        echo "COMMIT_MSG<<EOF" >> $GITHUB_ENV 
+        git log -1 --format=%B | sed -r 's,(["]),,g' >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+        while read i; do 
+          reviewers+="$(jq --arg i "$i" '.[$i]' usernames.json) "
+        done <<< "$(echo '${{ toJSON(github.event.pull_request.requested_reviewers) }}' | jq -c -r '.[] | .login')"
+        echo "AUTHOR=$(jq --arg author "${{ github.actor }}" '.[$author]' usernames.json | tr -d '"')" >> $GITHUB_ENV
+        echo "REVIEWERS=$(echo $reviewers | tr -d '"')" >> $GITHUB_ENV
+    - name: Send Telegram message on pull request
+      run: |
+        curl --location --request POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
+            --header "Content-Type: application/json" \
+            --data-raw '{  
+                "chat_id": ${{ secrets.TELEGRAM_TO }}, 
+                "message_thread_id": ${{ secrets.TELEGRAM_THREADID }},
+                "text": "${{ env.AUTHOR }} created a new [Pull Request](https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }})  \n\n`${{ env.COMMIT_MSG }}` \n\n*Reviewers:* ${{ env.REVIEWERS }} ", 
+                "parse_mode": "MarkdownV2"  
+        }'
