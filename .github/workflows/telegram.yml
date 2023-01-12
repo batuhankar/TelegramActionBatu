@@ -32,5 +32,6 @@ jobs:
                 "chat_id": ${{ secrets.TELEGRAM_TO }}, 
                 "message_thread_id": ${{ secrets.TELEGRAM_THREADID }},
                 "text": "${{ env.AUTHOR }} created a new [Pull Request](https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }})  \n\n`${{ env.COMMIT_MSG }}` \n\n*Reviewers:* ${{ env.REVIEWERS }} ", 
+                "disable_web_page_preview": true,
                 "parse_mode": "MarkdownV2"  
         }'
